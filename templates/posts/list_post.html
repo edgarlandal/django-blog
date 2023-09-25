@@ -1,0 +1,32 @@
+{% extends "base.html" %} 
+
+{% block title %}List Post{% endblock title %}
+
+{% block content %}
+<h1>List Post</h1>
+
+<ul>
+  {% for post in posts %}
+  <li>
+    <div class="card" style="width: 25rem">
+      <div class="card-body">
+        <h2>{{ post.title }}</h2>
+        <h3>{{ post.subtitle }}</h3>
+        <p>{{ post.body }}</p>
+
+        <div class="d-flex justify-content-between ">
+            <a href="{% url 'update_post' post.pk %}" class="btn btn-success">Edit</a>
+            <a href="{% url 'detele_post' post.pk %}" class="btn btn-danger">Delete</a>
+
+          </div>
+
+      </div>
+      <div class="card-footer d-flex gap-2 justify-content-between  ">
+        <p>Author{{ post.author }}</p>
+        <p>Created on: {{ post.created_on }}</p>
+      </div>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% endblock content %}
