@@ -1,3 +1,6 @@
+from typing import Any
+from django.forms.models import BaseModelForm
+from django.http import HttpResponse
 from django.views.generic import (
     ListView,
     DeleteView,
@@ -6,43 +9,82 @@ from django.views.generic import (
     DetailView,
 )
 from django.urls import reverse_lazy
-
 from django.shortcuts import render
-
-from .models import Posts
-
-
-class PostsListView(ListView):
-    template_name = "posts/list_post.html"
-    model = Posts
-    fields = "__all__"
-
-    def get(self, request):
-        posts = Posts.objects.all()
-        context = {"posts": posts}
-        return render(request, self.template_name, context)
+from .models import Posts, Status
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 
 
-class PostsCreateView(CreateView):
+class PostsCreateView(LoginRequiredMixin, CreateView):
     template_name = "posts/create_post.html"
     model = Posts
-    fields = "__all__"
+    fields = ["title", "author", "subtitle", "body"]
+
+    def form_valid(self, form):
+        form.instance_author = self.request.user
+        return super().form_valid(form)
 
 
-class PostsDeleteView(DeleteView):
+class PostsUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+    template_name = "posts/update_post.html"
+    model = Posts
+    fields = ["title", "subtitle", "body", "status"]
+
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
+
+
+class PostsDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
     template_name = "posts/delete_post.html"
     model = Posts
-    fields = "__all__"
     success_url = reverse_lazy("list_post")
 
+    def test_func(self):
+        post = self.get_object()
+        return self.request.user == post.author
 
-class PostsUpdateView(UpdateView):
-    template_name = "posts/update_post.html"
-    fields = ["title", "subtitle", "body"]
+
+class PostListView(ListView):
+    template_name = "posts/list.html"
     model = Posts
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        published = Status.objects.get(name="published")
+        context["post_list"] = (
+            Posts.objects.filter(status=published).order_by("created_on").reverse()
+        )
+        return context
+
+
+class DraftPostListView(LoginRequiredMixin, ListView):
+    template_name = "posts/list.html"
+    model = Posts
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        draft = Status.objects.get(name="draft")
+        context["post_list"] = (
+            Posts.objects.filter(status=draft)
+            .filter(author=self.request.user)
+            .order_by("created_on")
+            .reverse()
+        )
+        return context
 
 
 class PostsDetailView(DetailView):
-    template_name = "posts/detail_post.html"
+    template_name = "posts/detail.html"
     model = Posts
-    context_object_name = 'post'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        draft = Status.objects.get(name="draft")
+        if (
+            context["post"].status == draft
+            and context["post"].author != self.request.user
+        ):
+            context["post"] = None
+        if context["post"]:
+            return context
+        return context
