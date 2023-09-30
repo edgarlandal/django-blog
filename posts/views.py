@@ -17,7 +17,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 class PostsCreateView(LoginRequiredMixin, CreateView):
     template_name = "posts/create_post.html"
     model = Posts
-    fields = ["title", "author", "subtitle", "body"]
+    fields = ["title", "author", "subtitle", "body", "status"]
 
     def form_valid(self, form):
         form.instance_author = self.request.user
@@ -45,20 +45,21 @@ class PostsDeleteView(LoginRequiredMixin, UserPassesTestMixin, DeleteView):
 
 
 class PostListView(ListView):
-    template_name = "posts/list.html"
+    template_name = "posts/list_post.html"
     model = Posts
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         published = Status.objects.get(name="published")
-        context["post_list"] = (
+        context["posts_list"] = (
             Posts.objects.filter(status=published).order_by("created_on").reverse()
         )
+        print(context)
         return context
 
 
 class DraftPostListView(LoginRequiredMixin, ListView):
-    template_name = "posts/list.html"
+    template_name = "posts/list_post.html"
     model = Posts
 
     def get_context_data(self, **kwargs):
@@ -74,17 +75,18 @@ class DraftPostListView(LoginRequiredMixin, ListView):
 
 
 class PostsDetailView(DetailView):
-    template_name = "posts/detail.html"
+    template_name = "posts/detail_post.html"
     model = Posts
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         draft = Status.objects.get(name="draft")
         if (
-            context["post"].status == draft
-            and context["post"].author != self.request.user
+            context["posts"].status == draft
+            and context["posts"].author != self.request.user
         ):
-            context["post"] = None
-        if context["post"]:
+        
+            context["posts"] = None
+        if context["posts"]:
             return context
         return context
