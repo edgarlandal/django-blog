@@ -81,6 +81,7 @@ class PostsDetailView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         draft = Status.objects.get(name="draft")
+
         if (
             context["posts"].status == draft
             and context["posts"].author != self.request.user
